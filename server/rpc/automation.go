@@ -132,14 +132,14 @@ var deviceStateChangeHandle message.MethodHandle = func(m message.Message) messa
 	}
 	var exist bool
 	exist = false
-	var id uint
+	var device *autocode.Device
 	if len(list) > 0 {
 		for _, v := range list {
 			log.Println(v.SerialNo, "-", v.BuildId)
 			if v.SerialNo == m.GetString("serialNo", "Unknown") {
 				log.Println("automation: device already exist")
 				exist = true
-				id = v.ID
+				device = &v
 				break
 			}
 		}
@@ -148,7 +148,7 @@ var deviceStateChangeHandle message.MethodHandle = func(m message.Message) messa
 		//add device into database
 		addDevice(&m)
 	} else {
-		updateDevice(id, &m)
+		updateDevice(device, &m)
 	}
 
 	return message.Message{}
@@ -260,6 +260,7 @@ func addDeviceConsole(serialNo string, console string) {
 
 func updateDeviceConsole(deviceConsole *autocode.DeviceConsole, console string) {
 	var newDeviceConsole autocode.DeviceConsole
+	newDeviceConsole = *deviceConsole
 	newDeviceConsole.SerialNo = deviceConsole.SerialNo
 	newDeviceConsole.Console = console
 	newDeviceConsole.ID = deviceConsole.ID
@@ -293,28 +294,28 @@ func addDevice(msg *message.Message) {
 	}
 }
 
-func updateDevice(id uint, msg *message.Message) {
-	var device autocode.Device
-	device.ID = id
-	device.SerialNo = msg.GetString("serialNo", "")
-	device.Model = msg.GetString("model", "")
-	device.Product = msg.GetString("product", "")
-	device.Version = msg.GetString("version", "")
+func updateDevice(device *autocode.Device, msg *message.Message) {
+	var newDevice autocode.Device
+	newDevice = *device
+	newDevice.SerialNo = msg.GetString("serialNo", "")
+	newDevice.Model = msg.GetString("model", "")
+	newDevice.Product = msg.GetString("product", "")
+	newDevice.Version = msg.GetString("version", "")
 	if len(msg.GetString("buildId", "")) > 32 {
-		device.BuildId = string([]byte(msg.GetString("buildId", ""))[:32])
+		newDevice.BuildId = string([]byte(msg.GetString("buildId", ""))[:32])
 	} else {
-		device.BuildId = msg.GetString("buildId", "")
+		newDevice.BuildId = msg.GetString("buildId", "")
 	}
-	device.BuildType = msg.GetString("buildType", "")
-	device.Sku = msg.GetString("sku", "")
-	device.Sdk = msg.GetString("sdk", "")
-	device.Security = msg.GetString("security", "")
-	device.Api = msg.GetString("api", "")
-	device.Config = msg.GetString("config", "")
-	device.Camera = msg.GetString("camera", "")
-	device.Scanner = msg.GetString("scanner", "")
-	device.Wwan = msg.GetString("wwan", "")
-	if err := deviceService.UpdateDevice(device); err != nil {
+	newDevice.BuildType = msg.GetString("buildType", "")
+	newDevice.Sku = msg.GetString("sku", "")
+	newDevice.Sdk = msg.GetString("sdk", "")
+	newDevice.Security = msg.GetString("security", "")
+	newDevice.Api = msg.GetString("api", "")
+	newDevice.Config = msg.GetString("config", "")
+	newDevice.Camera = msg.GetString("camera", "")
+	newDevice.Scanner = msg.GetString("scanner", "")
+	newDevice.Wwan = msg.GetString("wwan", "")
+	if err := deviceService.UpdateDevice(newDevice); err != nil {
 		log.Println("automation: failed to update device", err)
 	}
 }

@@ -68,12 +68,19 @@ export default {
       })
     }
     const deviceConsoleListData = await this.getDeviceConsoleListApi({ page: 1, size: 1000 })
+    var hasConsole = false
     const deviceConsoleList = deviceConsoleListData.data.list
     for (let i = 0; i < deviceConsoleList.length; i++) {
       if (deviceConsoleList[i].serialNo === serialNo) {
         this.console = deviceConsoleList[i].console
+        hasConsole = true
         break
       }
+    }
+    if (!hasConsole) {
+      this.console = 'No Console Log found!'
+      this.loadingDisplay = 'none'
+      return
     }
     var param = {
       serialNo: this.device.serialNo
