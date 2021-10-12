@@ -21,3 +21,8 @@ type TestId struct {
 	global.GVA_MODEL
 	TestId int `json:"testId"`
 }
+
+type FileInfo struct {
+	global.GVA_MODEL
+	FileName string `json:"fileName" form:"fileName"`
+}

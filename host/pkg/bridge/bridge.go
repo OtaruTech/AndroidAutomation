@@ -72,9 +72,11 @@ var (
 	testResultMap   map[int]*TestResult
 	forgetDeviceMap map[string]*Device
 	uid             string
+	remoteHost      string
 )
 
-func Initialize() {
+func Initialize(host string) {
+	remoteHost = host
 	var err error
 	client, err = adb.NewWithConfig(adb.ServerConfig{
 		Port: *port,
@@ -83,20 +85,6 @@ func Initialize() {
 		log.Fatal(err)
 	}
 	client.StartServer()
-
-	// serverVersion, err := client.ServerVersion()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// log.Println("Server version:", serverVersion)
-	// devices, err := client.ListDevices()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// log.Println("Devices:")
-	// for _, device := range devices {
-	// 	log.Printf("\t%+v\n", *device)
-	// }
 
 	deviceMap = make(map[string]*Device)
 	forgetDeviceMap = make(map[string]*Device)
@@ -237,6 +225,8 @@ func processTestcase(device *Device) {
 			}
 		}
 		device.logcat()
+		//install test apk
+		device.installApk("automation.apk")
 		logFileName := fmt.Sprintf("target-%s-%04d%02d%02d-%02d%02d%02d.log",
 			device.serialNo,
 			time.Now().Year(),
@@ -276,6 +266,8 @@ func processTestcase(device *Device) {
 		} else if runtime.GOOS == "linux" {
 			fullName = dir + "/" + logFileName
 		}
+		remotePath := "root@" + remoteHost + ":/root/logcat/"
+		utils.Scp(fullName, remotePath, "2222")
 		testResult := &TestResult{id: job.Id, serialNo: device.serialNo, result: results, logcatFileName: fullName}
 		testResultMap[job.Id] = testResult
 		device.busy = false

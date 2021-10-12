@@ -35,7 +35,7 @@
       <el-table-column align="left" label="用时/秒" prop="time" min-width="8%" />
       <el-table-column align="left" label="日志下载" min-width="16%">
         <template #default="scope">
-          <a :href="scope.row.url" target="_blank" style="color: blue">{{ scope.row.logcat }}</a>
+          <a :href="scope.row.url" @click="downloadLogFile(scope.row.logcat)" style="color: blue">{{ scope.row.logcat }}</a>
         </template>
       </el-table-column>
     </el-table>
@@ -46,7 +46,10 @@
 import infoList from '@/mixins/infoList'
 import {
   getTestRunnerList
-} from '@/api/autoTestRunner' //  此处请自行替换地址
+} from '@/api/autoTestRunner'
+import {
+  downloadFile,
+} from '@/api/android'
 export default {
   name: 'ReportItem',
   mixins: [infoList],
@@ -58,7 +61,8 @@ export default {
     return {
       border: true,
       spanArr: [],
-      testResults: []
+      testResults: [],
+      downloadFile: downloadFile
     }
   },
   async created() {
@@ -95,6 +99,9 @@ export default {
     this.getSpanArr(results)
   },
   methods: {
+    async downloadLogFile(file) {
+      await this.downloadFile(file)
+    },
     resultOnClick(row) {
       this.showLog(row.resultDetail)
     },

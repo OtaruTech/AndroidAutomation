@@ -43,7 +43,7 @@ func main() {
 		log.Println("Usage: ./main.exe <host addr> <port>")
 		return
 	}
-	bridge.Initialize()
+	bridge.Initialize(host)
 	message.InitMessage(host, port)
 	bridge.Start()
 	for {
@@ -64,7 +64,7 @@ func gui_main() {
 		port := ui.Eval(`document.getElementById("port").value`)
 		log.Println(host, ":", port)
 		message.InitMessage(host.String(), port.Int())
-		bridge.Initialize()
+		bridge.Initialize(host.String())
 		bridge.Start()
 	})
 
