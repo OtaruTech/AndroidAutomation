@@ -56,12 +56,13 @@ func (e *AndroidApi) DownloadFile(c *gin.Context) {
 	var file automation.FileInfo
 	_ = c.ShouldBindQuery(&file)
 	log.Println("automation:", file)
-	ok, err := utils.PathExists("main.go")
+	logFileName := "/root/logcat/" + file.FileName
+	ok, err := utils.PathExists(logFileName)
 	if !ok || err != nil {
 		log.Println("file not exist")
 		response.FailWithMessage("文件不存在", c)
 		return
 	}
 	c.Writer.Header().Add("success", "true")
-	c.File("main.go")
+	c.File(logFileName)
 }

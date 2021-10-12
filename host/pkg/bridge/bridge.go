@@ -268,7 +268,7 @@ func processTestcase(device *Device) {
 		}
 		remotePath := "root@" + remoteHost + ":/root/logcat/"
 		utils.Scp(fullName, remotePath, "2222")
-		testResult := &TestResult{id: job.Id, serialNo: device.serialNo, result: results, logcatFileName: fullName}
+		testResult := &TestResult{id: job.Id, serialNo: device.serialNo, result: results, logcatFileName: logFileName}
 		testResultMap[job.Id] = testResult
 		device.busy = false
 		device.testcaseName = ""

@@ -35,7 +35,7 @@
       <el-table-column align="left" label="用时/秒" prop="time" min-width="8%" />
       <el-table-column align="left" label="日志下载" min-width="16%">
         <template #default="scope">
-          <a :href="scope.row.url" @click="downloadLogFile(scope.row.logcat)" style="color: blue">{{ scope.row.logcat }}</a>
+          <span style="color: blue;cursor: pointer;" @click="downloadLogFile(scope.row.logcat)">{{ scope.row.logcat }}</span>
         </template>
       </el-table-column>
     </el-table>
