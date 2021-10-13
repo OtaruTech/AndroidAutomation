@@ -17,7 +17,7 @@ func (e *AndroidApi) GetRuntimeState(c *gin.Context) {
 	var req automation.DeviceRequest
 	_ = c.ShouldBindJSON(&req)
 	ret, state := auto.AndroidGetRuntimeState(req.SerialNo)
-	log.Println("automation: GetRuntimeState", ret, state)
+	// log.Println("automation: GetRuntimeState", ret, state)
 	if ret < 0 {
 		// response.FailWithMessage("获取设备运行状态失败", c)
 		response.Ok(c)

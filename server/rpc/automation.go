@@ -1,7 +1,7 @@
 package automation
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -209,6 +209,15 @@ var uploadConsoleHandle message.MethodHandle = func(m message.Message) message.M
 	return message.Message{}
 }
 
+func destroyJobs() {
+	for key, cron := range schedulerMap {
+		if cron != nil {
+			cron.Stop()
+		}
+		delete(schedulerMap, key)
+	}
+}
+
 func createJobs() {
 	err, jobList := getJobList()
 	if err != nil {
@@ -219,7 +228,8 @@ func createJobs() {
 	for _, job := range jobList {
 		c := cron.New()
 		schedulerMap[job.Name] = c
-		c.AddFunc("@every 10m", func() {
+		spec := fmt.Sprintf("0 %d * * ?", *job.Hour)
+		c.AddFunc(spec, func() {
 			// c.AddFunc("23 22 * * ?", func() {
 			log.Println("automation: daily job", job.Name)
 			var otaUrl string
@@ -266,7 +276,10 @@ func createJobs() {
 				}
 			}
 		})
-		c.Start()
+		if *job.Enable {
+			log.Println("automation: start job", job.Name)
+			c.Start()
+		}
 	}
 }
 
@@ -292,7 +305,7 @@ func Initialize() {
 		log.Fatalln("automation:", "cannot create local service")
 	}
 	//start crontab to schedule the job
-	go createJobs()
+	createJobs()
 }
 
 func getConsoleList() (err error, consoleList []autocode.DeviceConsole) {
@@ -420,7 +433,6 @@ func addResult(result *TestResult) {
 	if err := reportService.CreateReport(report); err != nil {
 		log.Println("automation: failed to create report", err)
 	}
-	log.Println("automation: addResult", report)
 }
 
 func AndroidRunTestcase(serialNo string, testcases []string, timeout int, otaUrl string) int {
@@ -453,7 +465,6 @@ func AndroidGetRuntimeState(serialNo string) (ret int, runtimeState RuntimeState
 	var msg message.Message
 	msg.SetString("serialNo", serialNo)
 	result := remoteService.CallMethod("getRuntimeState", msg)
-	log.Println("automation: getRuntimeState", result)
 	if result.Empty() {
 		ret = -1
 		return
@@ -475,7 +486,6 @@ func AndroidGetTestRunnerState(id int) (ret int, runner TestRunner) {
 	var msg message.Message
 	msg.SetInt("testId", id)
 	result := remoteService.CallMethod("getTestRunnerState", msg)
-	log.Println("automation: getRuntimeState", result)
 	runner.Id = result.GetInt("id", -1)
 	runner.SerialNo = result.GetString("serialNo", "")
 	runner.Testcases = result.GetStringArray("testcases")
@@ -504,16 +514,19 @@ func JobChanged(request *automation.JobChangedReq) error {
 		log.Println("automation: failed to update job", err)
 		return err
 	}
-	cron := schedulerMap[newJob.Name]
-	if cron == nil {
-		return errors.New("cannot find scheduler")
-	}
-	if request.Enable {
-		log.Println("automation: start scheduler", newJob.Name)
-		cron.Start()
-	} else {
-		log.Println("automation: stop scheduler", newJob.Name)
-		cron.Stop()
-	}
+	//restart the jobs
+	destroyJobs()
+	createJobs()
+	// cron := schedulerMap[newJob.Name]
+	// if cron == nil {
+	// 	return errors.New("cannot find scheduler")
+	// }
+	// if request.Enable {
+	// 	log.Println("automation: start scheduler", newJob.Name)
+	// 	cron.Start()
+	// } else {
+	// 	log.Println("automation: stop scheduler", newJob.Name)
+	// 	cron.Stop()
+	// }
 	return nil
 }

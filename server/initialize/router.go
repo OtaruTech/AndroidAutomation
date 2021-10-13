@@ -15,6 +15,7 @@ import (
 // 初始化总路由
 
 func Routers() *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
 	var Router = gin.Default()
 
 	// 如果想要不使用nginx代理前端网页，可以修改 web/.env.production 下的
