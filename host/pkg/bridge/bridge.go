@@ -513,7 +513,7 @@ var runTestcaseHandle message.MethodHandle = func(input message.Message) (output
 		return out
 	}
 	var runner TestRunner
-	runner.Id = int(time.Now().Unix())
+	runner.Id = int(time.Now().UnixMilli())
 	runner.SerialNo = serialNo
 	runner.Testcases = make([]string, len(testcases))
 	runner.Completed = make([]string, len(testcases))

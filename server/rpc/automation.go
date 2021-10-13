@@ -4,6 +4,7 @@ import (
 	"log"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/model/autocode"
 	autocodeReq "github.com/flipped-aurora/gin-vue-admin/server/model/autocode/request"
@@ -47,6 +48,7 @@ var (
 	listener      *message.MessageBusListener
 	testIdMap     map[int]string
 	schedulerMap  map[string]*cron.Cron
+	lock          sync.Mutex
 )
 
 var deviceService = service.ServiceGroupApp.AutoCodeServiceGroup.DeviceService
@@ -228,8 +230,9 @@ func createJobs() {
 		c := cron.New()
 		schedulerMap[job.Name] = c
 		// spec := fmt.Sprintf("0 %d * * ?", *job.Hour)
-		spec := "@every 2m"
+		spec := "@every 10m"
 		c.AddFunc(spec, func() {
+			lock.Lock()
 			log.Println("automation: daily job", job.Name)
 			var otaUrl string
 			var serialNo string
@@ -251,6 +254,7 @@ func createJobs() {
 			var findDevice = false
 			for _, dev := range deviceList {
 				ret, runtimeState := AndroidGetRuntimeState(dev.SerialNo)
+				log.Println("require:", job.Product)
 				log.Println("serialNo:", dev.SerialNo, "product:", dev.Product, "state:", runtimeState.State, "ret:", ret)
 				if job.Product == dev.Product && runtimeState.State == 0 && ret == 0 {
 					serialNo = dev.SerialNo
@@ -274,6 +278,7 @@ func createJobs() {
 					log.Println("automation: failed to create test runner", err)
 				}
 			}
+			lock.Unlock()
 		})
 		if *job.Enable {
 			log.Println("automation: start job", job.Name)

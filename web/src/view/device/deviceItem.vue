@@ -93,10 +93,10 @@ export default {
 
 <style scoped>
 .device {
-  margin: 10px;
+  margin: 20px;
   padding: 10px;
   height: 160px;
-  width: 46%;
+  width: 44%;
   display: inline-block;
   box-shadow: #ccc 0px 0px 10px;
   background-color: #fff;
@@ -143,6 +143,8 @@ export default {
 
 .device_right {
   margin-top: 10px;
+  margin-right: 20px;
   float: right;
 }
+
 </style>
