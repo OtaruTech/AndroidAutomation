@@ -69,9 +69,6 @@ func (reportService *ReportService)GetReportInfoList(info autoCodeReq.ReportSear
     if info.Logcat != "" {
         db = db.Where("`logcat` LIKE ?","%"+ info.Logcat+"%")
     }
-    if info.BuildId != "" {
-        db = db.Where("`buildId` = ?",info.BuildId)
-    }
 	err = db.Count(&total).Error
 	if err!=nil {
     	return

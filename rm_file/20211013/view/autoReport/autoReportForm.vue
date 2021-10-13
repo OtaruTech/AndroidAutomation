@@ -17,9 +17,6 @@
         <el-form-item label="日志文件:">
           <el-input v-model="formData.logcat" clearable placeholder="请输入" />
         </el-form-item>
-        <el-form-item label="版本号:">
-          <el-input v-model="formData.buildId" clearable placeholder="请输入" />
-        </el-form-item>
         <el-form-item>
           <el-button size="mini" type="primary" @click="save">保存</el-button>
           <el-button size="mini" type="primary" @click="back">返回</el-button>
@@ -48,7 +45,6 @@ export default {
         testcases: '',
         result: '',
         logcat: '',
-        buildId: '',
       }
     }
   },

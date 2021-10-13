@@ -14,7 +14,6 @@ type Report struct {
       Testcases  string `json:"testcases" form:"testcases" gorm:"column:testcases;comment:;type:varchar(1024);"`
       Result  string `json:"result" form:"result" gorm:"column:result;comment:;type:text(65536);"`
       Logcat  string `json:"logcat" form:"logcat" gorm:"column:logcat;comment:;type:varchar(256);"`
-      BuildId  string `json:"buildId" form:"buildId" gorm:"column:buildId;comment:;type:varchar(64);"`
 }
 
 

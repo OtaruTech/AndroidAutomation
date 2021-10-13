@@ -11,14 +11,16 @@
     >
       <el-table-column align="left" label="日期" min-width="14%">
         <template #default="scope">
-          <span>{{ scope.row.serialNo }}</span>
+          <span style="font-weight: bold;">{{ scope.row.serialNo }}</span>
           <br>
           <span>{{ formatDate(scope.row.date) }}</span>
         </template>
       </el-table-column>
       <el-table-column align="left" label="名称" prop="name" min-width="12%">
         <template #default="scope">
-          <span style="font-weight: bold;">{{ scope.row.name }}</span>
+          <span style="font-weight: bold;">Build: {{ scope.row.buildId }}</span>
+          <br>
+          <span>{{ scope.row.name }}</span>
         </template>
       </el-table-column>
       <el-table-column align="left" label="用户" min-width="8%">
@@ -97,6 +99,7 @@ export default {
       result.time = this.getTimeFromResult(ret)
       result.name = runnerName
       result.owner = owner
+      result.buildId = this.testResult.buildId
       this.testResults.push(result)
     })
     this.getSpanArr(results)
