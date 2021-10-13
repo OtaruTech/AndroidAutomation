@@ -42,13 +42,68 @@ type RemoteHost struct {
 	devices       []string
 }
 
+type JobScheduler struct {
+	cron *cron.Cron
+	job  autocode.Job
+}
+
+func (scheduler *JobScheduler) timerFunc() {
+	lock.Lock()
+	log.Println("automation: daily job", scheduler.job.Name)
+	var otaUrl string
+	var serialNo string
+	var testcases []string
+	var timeout int
+	if scheduler.job.OtaUrl == "" {
+		var req = automation.LatestOtaRequest{
+			OtaPath:    scheduler.job.OtaPath,
+			OtaFormat:  scheduler.job.OtaFormat,
+			FileFormat: scheduler.job.FileFormat,
+		}
+		_, response := androidService.GetLatestOTA(req)
+		otaUrl = response.LatestOtaUrl
+	} else {
+		otaUrl = scheduler.job.OtaUrl
+	}
+	testcases = strings.Split(scheduler.job.Testcases, ",")
+	_, deviceList := getDeviceList()
+	var findDevice = false
+	for _, dev := range deviceList {
+		ret, runtimeState := AndroidGetRuntimeState(dev.SerialNo)
+		log.Println("require:", scheduler.job.Product)
+		log.Println("serialNo:", dev.SerialNo, "product:", dev.Product, "state:", runtimeState.State, "ret:", ret)
+		if scheduler.job.Product == dev.Product && runtimeState.State == 0 && ret == 0 {
+			serialNo = dev.SerialNo
+			findDevice = true
+			break
+		}
+	}
+	if !findDevice {
+		log.Println("automation: cannot find product", scheduler.job.Product)
+	} else {
+		timeout = 0
+		id := AndroidRunTestcase(serialNo, testcases, timeout, otaUrl)
+		log.Println("automation: testId", id)
+		var testRunner autocode.TestRunner
+		testRunner.TestId = &id
+		testRunner.Testcases = scheduler.job.Testcases
+		testRunner.Name = scheduler.job.Name
+		testRunner.Owner = scheduler.job.Owner
+		testRunner.SerialNo = serialNo
+		if err := testRunnerService.CreateTestRunner(testRunner); err != nil {
+			log.Println("automation: failed to create test runner", err)
+		}
+	}
+	lock.Unlock()
+}
+
 var (
-	remoteHostMap map[string]*RemoteHost
-	localService  *message.LocalService
-	listener      *message.MessageBusListener
-	testIdMap     map[int]string
-	schedulerMap  map[string]*cron.Cron
-	lock          sync.Mutex
+	remoteHostMap   map[string]*RemoteHost
+	localService    *message.LocalService
+	listener        *message.MessageBusListener
+	testIdMap       map[int]string
+	jobSchedulerMap map[string]*JobScheduler
+	lock            sync.Mutex
 )
 
 var deviceService = service.ServiceGroupApp.AutoCodeServiceGroup.DeviceService
@@ -211,11 +266,11 @@ var uploadConsoleHandle message.MethodHandle = func(m message.Message) message.M
 }
 
 func destroyJobs() {
-	for key, cron := range schedulerMap {
-		if cron != nil {
-			cron.Stop()
+	for key, scheduler := range jobSchedulerMap {
+		if scheduler != nil {
+			scheduler.cron.Stop()
 		}
-		delete(schedulerMap, key)
+		delete(jobSchedulerMap, key)
 	}
 }
 
@@ -227,62 +282,16 @@ func createJobs() {
 	}
 	log.Println("automation: job list", jobList)
 	for _, job := range jobList {
-		c := cron.New()
-		schedulerMap[job.Name] = c
+		jobSchedulerMap[job.Name] = &JobScheduler{
+			job: job,
+			cron: cron.New(),
+		}
 		// spec := fmt.Sprintf("0 %d * * ?", *job.Hour)
 		spec := "@every 10m"
-		c.AddFunc(spec, func() {
-			lock.Lock()
-			log.Println("automation: daily job", job.Name)
-			var otaUrl string
-			var serialNo string
-			var testcases []string
-			var timeout int
-			if job.OtaUrl == "" {
-				var req = automation.LatestOtaRequest{
-					OtaPath:    job.OtaPath,
-					OtaFormat:  job.OtaFormat,
-					FileFormat: job.FileFormat,
-				}
-				_, response := androidService.GetLatestOTA(req)
-				otaUrl = response.LatestOtaUrl
-			} else {
-				otaUrl = job.OtaUrl
-			}
-			testcases = strings.Split(job.Testcases, ",")
-			_, deviceList := getDeviceList()
-			var findDevice = false
-			for _, dev := range deviceList {
-				ret, runtimeState := AndroidGetRuntimeState(dev.SerialNo)
-				log.Println("require:", job.Product)
-				log.Println("serialNo:", dev.SerialNo, "product:", dev.Product, "state:", runtimeState.State, "ret:", ret)
-				if job.Product == dev.Product && runtimeState.State == 0 && ret == 0 {
-					serialNo = dev.SerialNo
-					findDevice = true
-					break
-				}
-			}
-			if !findDevice {
-				log.Println("automation: cannot find product", job.Product)
-			} else {
-				timeout = 0
-				id := AndroidRunTestcase(serialNo, testcases, timeout, otaUrl)
-				log.Println("automation: testId", id)
-				var testRunner autocode.TestRunner
-				testRunner.TestId = &id
-				testRunner.Testcases = job.Testcases
-				testRunner.Name = job.Name
-				testRunner.Owner = job.Owner
-				testRunner.SerialNo = serialNo
-				if err := testRunnerService.CreateTestRunner(testRunner); err != nil {
-					log.Println("automation: failed to create test runner", err)
-				}
-			}
-			lock.Unlock()
-		})
+		jobSchedulerMap[job.Name].cron.AddFunc(spec, jobSchedulerMap[job.Name].timerFunc)
 		if *job.Enable {
 			log.Println("automation: start job", job.Name)
-			c.Start()
+			jobSchedulerMap[job.Name].cron.Start()
 		}
 	}
 }
@@ -291,7 +300,7 @@ func Initialize() {
 	log.Println("automation: Android Automation Start!!")
 	remoteHostMap = make(map[string]*RemoteHost)
 	testIdMap = make(map[int]string)
-	schedulerMap = make(map[string]*cron.Cron)
+	jobSchedulerMap = make(map[string]*JobScheduler)
 	localService = nil
 	messagedaemon.InitDaemon()
 	message.InitMessage()
