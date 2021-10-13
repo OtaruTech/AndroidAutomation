@@ -1,7 +1,6 @@
 package automation
 
 import (
-	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -228,7 +227,8 @@ func createJobs() {
 	for _, job := range jobList {
 		c := cron.New()
 		schedulerMap[job.Name] = c
-		spec := fmt.Sprintf("0 %d * * ?", *job.Hour)
+		// spec := fmt.Sprintf("0 %d * * ?", *job.Hour)
+		spec := "@every 20min"
 		c.AddFunc(spec, func() {
 			// c.AddFunc("23 22 * * ?", func() {
 			log.Println("automation: daily job", job.Name)
