@@ -21,7 +21,10 @@
           <span style="font-weight: bold;">{{ scope.row.name }}</span>
         </template>
       </el-table-column>
-      <el-table-column align="left" label="用户" prop="owner" min-width="8%" />
+      <el-table-column align="left" label="用户" min-width="8%">
+        <template #default="scope">
+          <span style="font-weight: bold;">{{ scope.row.owner }}</span>
+        </template></el-table-column>
       <el-table-column align="left" label="测试用例" prop="testcase" min-width="32%" />
       <el-table-column align="left" label="结果" min-width="7%">
         <template #default="scope">
@@ -75,7 +78,7 @@ export default {
       if (this.testResult.testId === runnerList[i].testId) {
         runnerName = runnerList[i].name
         owner = runnerList[i].owner
-        serialNo = '设备: ' + runnerList[i].serialNo
+        serialNo = 'Serial: ' + runnerList[i].serialNo
         break
       }
     }

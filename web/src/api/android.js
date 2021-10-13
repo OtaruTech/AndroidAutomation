@@ -36,9 +36,16 @@ export const runTestcase = (data) => {
 }
 
 export const getRuntimeState = (data) => {
-  console.log(data)
   return service({
     url: '/android/getRuntimeState',
+    method: 'post',
+    data
+  })
+}
+
+export const jobChanged = (data) => {
+  return service({
+    url: '/android/jobChanged',
     method: 'post',
     data
   })

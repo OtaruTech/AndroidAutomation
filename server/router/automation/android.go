@@ -17,5 +17,6 @@ func (s *AndroidRouter) InitAndroidRouter(Router *gin.RouterGroup) {
 		androidRouter.POST("getTestRunnerState", androidApi.GetRuntimeState)
 		androidRouter.POST("runTestcase", androidApi.RunTestcase)
 		androidRouter.GET("downloadFile", androidApi.DownloadFile)
+		androidRouter.POST("jobChanged", androidApi.JobChanged)
 	}
 }

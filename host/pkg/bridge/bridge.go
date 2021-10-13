@@ -60,6 +60,7 @@ type TestResult struct {
 	serialNo       string
 	result         []string
 	logcatFileName string
+	buildId        string
 }
 
 var (
@@ -183,6 +184,8 @@ func processTestcase(device *Device) {
 		device.startTime = time.Now().Unix()
 		var err error
 		err = nil
+		//install test apk
+		device.installApk("automation.apk")
 		if job.OtaUrl != "" {
 			device.testcaseName = "OTA Downloading..."
 			// log.Println("Download OTA:" + job.OtaUrl)
@@ -215,6 +218,7 @@ func processTestcase(device *Device) {
 					uploadConsoleLog(device)
 					device.reboot()
 					time.Sleep(time.Minute * 2)
+					uploadDeviceProp(device)
 					device.console += getFormatTime() + ": Device done\n"
 					delete(forgetDeviceMap, device.serialNo)
 					uploadConsoleLog(device)
@@ -225,8 +229,6 @@ func processTestcase(device *Device) {
 			}
 		}
 		device.logcat()
-		//install test apk
-		device.installApk("automation.apk")
 		logFileName := fmt.Sprintf("target-%s-%04d%02d%02d-%02d%02d%02d.log",
 			device.serialNo,
 			time.Now().Year(),
@@ -268,7 +270,12 @@ func processTestcase(device *Device) {
 		}
 		remotePath := "root@" + remoteHost + ":/root/logcat/"
 		utils.Scp(fullName, remotePath, "2222")
-		testResult := &TestResult{id: job.Id, serialNo: device.serialNo, result: results, logcatFileName: logFileName}
+		testResult := &TestResult{
+			id:             job.Id,
+			serialNo:       device.serialNo,
+			result:         results,
+			logcatFileName: logFileName,
+			buildId:        device.buildId}
 		testResultMap[job.Id] = testResult
 		device.busy = false
 		device.testcaseName = ""
@@ -645,6 +652,7 @@ func uploadTestResult(result *TestResult) {
 	msg.SetString("serialNo", result.serialNo)
 	msg.SetStringArray("result", result.result)
 	msg.SetString("logcat", result.logcatFileName)
+	msg.SetString("buildId", result.buildId)
 	remoteService.CallMethod("uploadResult", msg)
 }
 
@@ -659,8 +667,29 @@ func uploadConsoleLog(device *Device) {
 	remoteService.CallMethod("uploadConsole", msg)
 }
 
-func uploadFile(src string, dst string) {
-	utils.Scp(src, dst, "10022")
+func uploadDeviceProp(device *Device) {
+	device.getDeviceProp()
+	log.Printf("New device %s - %s - %s", device.serialNo, device.model, device.product)
+	if remoteService != nil {
+		var param message.Message
+		param.SetBool("state", true)
+		param.SetString("host", "Android-"+uid)
+		param.SetString("serialNo", device.serialNo)
+		param.SetString("model", device.model)
+		param.SetString("product", device.product)
+		param.SetString("version", device.version)
+		param.SetString("buildId", device.buildId)
+		param.SetString("buildType", device.buildType)
+		param.SetString("sku", device.sku)
+		param.SetString("sdk", device.sdk)
+		param.SetString("security", device.security)
+		param.SetString("api", device.api)
+		param.SetString("config", device.config)
+		param.SetString("camera", device.camera)
+		param.SetString("scanner", device.scanner)
+		param.SetString("wwan", device.wwan)
+		remoteService.CallMethod("deviceStateChange", param)
+	}
 }
 
 func getFormatTime() string {

@@ -1,15 +1,18 @@
 package automation
 
 import (
+	"errors"
 	"log"
 	"reflect"
 	"strings"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/model/autocode"
 	autocodeReq "github.com/flipped-aurora/gin-vue-admin/server/model/autocode/request"
+	"github.com/flipped-aurora/gin-vue-admin/server/model/automation"
 	"github.com/flipped-aurora/gin-vue-admin/server/rpc/message"
 	"github.com/flipped-aurora/gin-vue-admin/server/rpc/messagedaemon"
 	"github.com/flipped-aurora/gin-vue-admin/server/service"
+	"github.com/robfig/cron/v3"
 )
 
 type TestResult struct {
@@ -17,6 +20,7 @@ type TestResult struct {
 	SerialNo       string   `json:"serialNo"`
 	Result         []string `json:"result"`
 	LogcatFileName string   `json:"logcat"`
+	BuildId        string   `json:"buildId"`
 }
 
 type TestRunner struct {
@@ -43,11 +47,15 @@ var (
 	localService  *message.LocalService
 	listener      *message.MessageBusListener
 	testIdMap     map[int]string
+	schedulerMap  map[string]*cron.Cron
 )
 
 var deviceService = service.ServiceGroupApp.AutoCodeServiceGroup.DeviceService
 var reportService = service.ServiceGroupApp.AutoCodeServiceGroup.ReportService
 var consoleService = service.ServiceGroupApp.AutoCodeServiceGroup.DeviceConsoleService
+var jobService = service.ServiceGroupApp.AutoCodeServiceGroup.JobService
+var androidService = service.ServiceGroupApp.AutomationServiceGroup.AndroidService
+var testRunnerService = service.ServiceGroupApp.AutoCodeServiceGroup.TestRunnerService
 
 var clientAvailableHandle message.ServiceAvailableHandle = func(clientId string, service string) {
 	log.Println("automation: active", clientId, "->", service)
@@ -159,15 +167,19 @@ var uploadTestResultHandle message.MethodHandle = func(m message.Message) messag
 	serialNo := m.GetString("serialNo", "")
 	__results := m.GetStringArray("result")
 	logcat := m.GetString("logcat", "")
+	buildId := m.GetString("buildId", "")
 	results := make([]string, 0)
 	for _, v := range __results {
 		if len(v) > 10 {
 			results = append(results, v)
 		}
 	}
-	testResult := &TestResult{Id: id, SerialNo: serialNo, Result: results, LogcatFileName: logcat}
-	// log.Println("automation:", testResult)
-	//store the test result
+	testResult := &TestResult{
+		Id:             id,
+		SerialNo:       serialNo,
+		Result:         results,
+		LogcatFileName: logcat,
+		BuildId:        buildId}
 	addResult(testResult)
 	return message.Message{}
 }
@@ -180,7 +192,7 @@ var uploadConsoleHandle message.MethodHandle = func(m message.Message) message.M
 	var deviceConsole *autocode.DeviceConsole
 	deviceConsole = nil
 	for _, v := range consoleList {
-		if(v.SerialNo == serialNo) {
+		if v.SerialNo == serialNo {
 			exist = true
 			deviceConsole = &v
 		}
@@ -197,10 +209,72 @@ var uploadConsoleHandle message.MethodHandle = func(m message.Message) message.M
 	return message.Message{}
 }
 
+func createJobs() {
+	err, jobList := getJobList()
+	if err != nil {
+		log.Println("automation: failed to get job list")
+		return
+	}
+	log.Println("automation: job list", jobList)
+	for _, job := range jobList {
+		c := cron.New()
+		schedulerMap[job.Name] = c
+		c.AddFunc("@every 10m", func() {
+			// c.AddFunc("23 22 * * ?", func() {
+			log.Println("automation: daily job", job.Name)
+			var otaUrl string
+			var serialNo string
+			var testcases []string
+			var timeout int
+			if job.OtaUrl == "" {
+				var req = automation.LatestOtaRequest{
+					OtaPath:    job.OtaPath,
+					OtaFormat:  job.OtaFormat,
+					FileFormat: job.FileFormat,
+				}
+				_, response := androidService.GetLatestOTA(req)
+				otaUrl = response.LatestOtaUrl
+			} else {
+				otaUrl = job.OtaUrl
+			}
+			testcases = strings.Split(job.Testcases, ",")
+			_, deviceList := getDeviceList()
+			var findDevice = false
+			for _, dev := range deviceList {
+				ret, runtimeState := AndroidGetRuntimeState(dev.SerialNo)
+				log.Println("serialNo:", dev.SerialNo, "product:", dev.Product, "state:", runtimeState.State, "ret:", ret)
+				if job.Product == dev.Product && runtimeState.State == 0 && ret == 0 {
+					serialNo = dev.SerialNo
+					findDevice = true
+					break
+				}
+			}
+			if !findDevice {
+				log.Println("automation: cannot find product", job.Product)
+			} else {
+				timeout = 0
+				id := AndroidRunTestcase(serialNo, testcases, timeout, otaUrl)
+				log.Println("automation: testId", id)
+				var testRunner autocode.TestRunner
+				testRunner.TestId = &id
+				testRunner.Testcases = job.Testcases
+				testRunner.Name = job.Name
+				testRunner.Owner = job.Owner
+				testRunner.SerialNo = serialNo
+				if err := testRunnerService.CreateTestRunner(testRunner); err != nil {
+					log.Println("automation: failed to create test runner", err)
+				}
+			}
+		})
+		c.Start()
+	}
+}
+
 func Initialize() {
 	log.Println("automation: Android Automation Start!!")
 	remoteHostMap = make(map[string]*RemoteHost)
 	testIdMap = make(map[int]string)
+	schedulerMap = make(map[string]*cron.Cron)
 	localService = nil
 	messagedaemon.InitDaemon()
 	message.InitMessage()
@@ -217,6 +291,8 @@ func Initialize() {
 	} else {
 		log.Fatalln("automation:", "cannot create local service")
 	}
+	//start crontab to schedule the job
+	go createJobs()
 }
 
 func getConsoleList() (err error, consoleList []autocode.DeviceConsole) {
@@ -244,6 +320,21 @@ func getDeviceList() (err error, deviceList []autocode.Device) {
 		for i := 0; i < s.Len(); i++ {
 			ele := s.Index(i)
 			deviceList = append(deviceList, ele.Interface().(autocode.Device))
+		}
+	}
+	return
+}
+
+func getJobList() (err error, jobList []autocode.Job) {
+	var pageInfo autocodeReq.JobSearch
+	pageInfo.Page = 0
+	pageInfo.PageSize = 100
+	err, list, _ := jobService.GetJobInfoList(pageInfo)
+	if reflect.TypeOf(list).Kind() == reflect.Slice {
+		s := reflect.ValueOf(list)
+		for i := 0; i < s.Len(); i++ {
+			ele := s.Index(i)
+			jobList = append(jobList, ele.Interface().(autocode.Job))
 		}
 	}
 	return
@@ -325,6 +416,7 @@ func addResult(result *TestResult) {
 	report.TestId = &result.Id
 	report.Result = strings.Join(result.Result, "|||")
 	report.Logcat = result.LogcatFileName
+	report.BuildId = result.BuildId
 	if err := reportService.CreateReport(report); err != nil {
 		log.Println("automation: failed to create report", err)
 	}
@@ -398,6 +490,30 @@ func getService(serialNo string) *message.RemoteService {
 				return host.remoteService
 			}
 		}
+	}
+	return nil
+}
+
+func JobChanged(request *automation.JobChangedReq) error {
+	log.Println("automation:", request)
+	var newJob autocode.Job
+	_, job := jobService.GetJob(uint(request.Id))
+	newJob = job
+	newJob.Enable = &request.Enable
+	if err := jobService.UpdateJob(newJob); err != nil {
+		log.Println("automation: failed to update job", err)
+		return err
+	}
+	cron := schedulerMap[newJob.Name]
+	if cron == nil {
+		return errors.New("cannot find scheduler")
+	}
+	if request.Enable {
+		log.Println("automation: start scheduler", newJob.Name)
+		cron.Start()
+	} else {
+		log.Println("automation: stop scheduler", newJob.Name)
+		cron.Stop()
 	}
 	return nil
 }

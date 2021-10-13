@@ -130,13 +130,13 @@ export default {
     this.updateRuntimeState()
     this.userInfo = await getUserInfo()
     // update runtime state
-    this.timer = setInterval(() => {
-      this.updateRuntimeState()
-    }, 1000 * 30)
+    // this.timer = setInterval(() => {
+    //  this.updateRuntimeState()
+    // }, 1000 * 30)
   },
   beforeUnmount() {
-    clearInterval(this.timer)
-    this.timer = null
+    // clearInterval(this.timer)
+    // this.timer = null
   },
   methods: {
     runTestcaseCloseDialog() {

@@ -42,10 +42,11 @@ export default {
       listApi: getReportList,
       reportList: [],
       spanArr: [],
+      deviceList: []
     }
   },
   async created() {
-    const reportListData = await this.listApi({ page: 1, size: 100 })
+    const reportListData = await this.listApi({ page: 1, size: 1000 })
     this.reportList = reportListData.data.list
     this.reportList = this.reportList.reverse()
   },

@@ -26,3 +26,19 @@ type FileInfo struct {
 	global.GVA_MODEL
 	FileName string `json:"fileName" form:"fileName"`
 }
+
+type LatestOtaRequest struct {
+	OtaPath    string `json:"otaPath" form:"otaPath"`
+	OtaFormat  string `json:"otaFormat" form:"otaFormat"`
+	FileFormat string `json:"fileFormat" form:"fileFormat"`
+}
+
+type LatestOtaResponse struct {
+	LatestVersion int    `json:"latestVersion" form:"latestVersion"`
+	LatestOtaUrl  string `json:"latestOtaUrl" form:"latestOtaUrl"`
+}
+
+type JobChangedReq struct {
+	Id     int  `json:"id" form:"id"`
+	Enable bool `json:"enable" form:"enable"`
+}

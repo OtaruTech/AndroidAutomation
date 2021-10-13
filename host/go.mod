@@ -13,6 +13,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/mattn/go-runewidth v0.0.4 // indirect
+	github.com/robfig/cron v1.2.0 // indirect
 	github.com/zach-klippenstein/goadb v0.0.0-20201208042340-620e0e950ed7 // indirect
 	github.com/zserge/lorca v0.1.10 // indirect
 	go.uber.org/atomic v1.7.0 // indirect

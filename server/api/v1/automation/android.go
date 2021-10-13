@@ -66,3 +66,17 @@ func (e *AndroidApi) DownloadFile(c *gin.Context) {
 	c.Writer.Header().Add("success", "true")
 	c.File(logFileName)
 }
+
+func (e *AndroidApi) GetLatestOTA(c *gin.Context) {
+}
+
+func (e *AndroidApi) JobChanged(c *gin.Context) {
+	var request automation.JobChangedReq
+	_ = c.ShouldBindJSON(&request)
+	err := auto.JobChanged(&request)
+	if err != nil {
+		response.FailWithMessage("更新失败", c)
+	} else {
+		response.OkWithMessage("更新成功", c)
+	}
+}
