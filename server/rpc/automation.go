@@ -228,9 +228,8 @@ func createJobs() {
 		c := cron.New()
 		schedulerMap[job.Name] = c
 		// spec := fmt.Sprintf("0 %d * * ?", *job.Hour)
-		spec := "@every 20min"
+		spec := "@every 2m"
 		c.AddFunc(spec, func() {
-			// c.AddFunc("23 22 * * ?", func() {
 			log.Println("automation: daily job", job.Name)
 			var otaUrl string
 			var serialNo string
