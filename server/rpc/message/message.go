@@ -9,6 +9,7 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	"github.com/go-basic/uuid"
 )
 
@@ -450,8 +451,9 @@ var connectLostHandler mqtt.ConnectionLostHandler = func(client mqtt.Client, err
 }
 
 func InitMessage() {
-	host := "127.0.0.1"
-	port := 11883
+	host := global.GVA_CONFIG.System.MqttServer
+	port := global.GVA_CONFIG.System.MqttPort
+	log.Println(host, ":", port)
 	uuid := uuid.New()
 	gClientId = "client-" + uuid
 	opts := mqtt.NewClientOptions()
