@@ -95,6 +95,7 @@ func Initialize(host string) {
 }
 
 func listenDevices() {
+	time.Sleep(time.Second * 5)
 	log.Println("Watching for device state changes.")
 	watcher := client.NewDeviceWatcher()
 	for event := range watcher.C() {
