@@ -251,6 +251,7 @@ var uploadConsoleHandle message.MethodHandle = func(m message.Message) message.M
 		if v.SerialNo == serialNo {
 			exist = true
 			deviceConsole = &v
+			break
 		}
 	}
 	if !exist {
@@ -378,9 +379,7 @@ func addDeviceConsole(serialNo string, console string) {
 func updateDeviceConsole(deviceConsole *autocode.DeviceConsole, console string) {
 	var newDeviceConsole autocode.DeviceConsole
 	newDeviceConsole = *deviceConsole
-	newDeviceConsole.SerialNo = deviceConsole.SerialNo
 	newDeviceConsole.Console = console
-	newDeviceConsole.ID = deviceConsole.ID
 	if err := consoleService.UpdateDeviceConsole(newDeviceConsole); err != nil {
 		log.Println("automation: failed to update device console", err)
 	}
