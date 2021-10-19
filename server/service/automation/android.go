@@ -27,9 +27,13 @@ func (androidService *AndroidService) GetLatestOTA(req automation.LatestOtaReque
 		if strings.HasPrefix(line, "<a href=\"") {
 			verStr := GetBetweenStr(line, "<a href=\"", "/\">")[9:]
 			var version int
-			fmt.Sscanf(verStr, req.OtaFormat, &version)
-			if version > 0 && version > maxVersion {
-				maxVersion = version
+			_, err := fmt.Sscanf(verStr, req.OtaFormat, &version)
+			if err == nil {
+				if version > 0 && version > maxVersion {
+					maxVersion = version
+				}
+			} else {
+				continue
 			}
 		}
 	}
